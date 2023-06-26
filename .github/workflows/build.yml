@@ -57,3 +57,48 @@ jobs:
 
       - name: Verify laravel_cicd_testing DB exists
         run: mysql --host 127.0.0.1 --port 3306 -uroot -ppass -e "SHOW DATABASES LIKE 'laravel_cicd_testing_second'"
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
+          coverage: none
+
+      - name: Start mysql service
+        run: sudo /etc/init.d/mysql start
+
+      - name: Get composer cache directory
+        id: composercache
+        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.composercache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Copy Env File
+        run: cp .env.testing .env
+
+      - name: Migrate Test Database
+        run: php artisan migrate --env=testing --seed --force
+        env:
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+
+      - name: Change Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Static Analysis via PHPStan
+        run: ./vendor/bin/phpstan analyse --memory-limit=2G
+
+      - name: Execute tests (Unit and Feature tests) via Pest
+        run: vendor/bin/pest
+        env:
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
