@@ -6,6 +6,8 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   laravel-tests:
@@ -16,9 +18,10 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         php-versions: ['8.1', '8.2']
-        laravel: [10.*]
+        laravel: ['^10.']
+        dependencies: ["highest"]
 
-    name: Laravel ${{ matrix.laravel }} - PHP v${{ matrix.php }}
+    name: "PHP ${{ matrix.php }} - L${{ matrix.laravel }} ${{ matrix.dependencies == 'highest' && '↑' || '↓' }}"
     
     services:
       mysql:
@@ -57,16 +60,13 @@ jobs:
 
       - name: Verify laravel_cicd_testing DB exists
         run: mysql --host 127.0.0.1 --port 3306 -uroot -ppass -e "SHOW DATABASES LIKE 'laravel_cicd_testing_second'"
-        
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
           coverage: none
-
-      - name: Start mysql service
-        run: sudo /etc/init.d/mysql start
 
       - name: Get composer cache directory
         id: composercache
