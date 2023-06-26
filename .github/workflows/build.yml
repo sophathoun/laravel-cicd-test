@@ -1,10 +1,14 @@
 # GitHub Action for Laravel with MySQL and Redis
 name: API
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  laravel:
+  laravel-tests:
     runs-on: ubuntu-latest
 
     strategy:
@@ -14,29 +18,39 @@ jobs:
         php-versions: ['8.1', '8.2']
         laravel: [10.*]
 
-    name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.dependency-version }} - ${{ matrix.os }}
+    name: Laravel ${{ matrix.laravel }} - PHP v${{ matrix.php }}
     
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.0.33
         env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_ROOT_PASSWORD: ''
           MYSQL_DATABASE: 'laravel_cicd_testing'
           MYSQL_USER: 'root'
           MYSQL_PASSWORD: ''
         ports:
-          - 3306/tcp
+          - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
       redis:
         image: redis
         ports:
-          - 6379/tcp
+          - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Verify laravel_cicd_testing DB exists
+        run: mysql --host 127.0.0.1 --port 3306 -uroot -e "SHOW DATABASES LIKE 'laravel_cicd_testing'"
+        
+      - name: Create 2nd Database
+        run: mysql --host 127.0.0.1 --port 3306 -uroot -e "CREATE DATABASE IF NOT EXISTS laravel_cicd_testing_second;"
+
+      - name: Verify laravel_cicd_testing DB exists
+        run: mysql --host 127.0.0.1 --port 3306 -uroot -e "SHOW DATABASES LIKE 'laravel_cicd_testing_second'"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
