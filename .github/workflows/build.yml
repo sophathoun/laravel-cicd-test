@@ -17,11 +17,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        php-versions: ['8.1', '8.2']
+        php: ['8.2']
         laravel: ['^10.']
         dependencies: ["highest"]
 
-    name: "PHP ${{ matrix.php }} - L${{ matrix.laravel }} ${{ matrix.dependencies == 'highest' && '↑' || '↓' }}"
+    name: "P${{ matrix.php }} - L${{ matrix.laravel }} ${{ matrix.dependencies == 'highest' && '↑' || '↓' }}"
     
     services:
       mysql:
@@ -64,7 +64,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-versions }}
+          php-version: ${{ matrix.php }}
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
           coverage: none
 
@@ -80,10 +80,13 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --optimize-autoloader
 
       - name: Copy Env File
         run: cp .env.testing .env
+
+      - name: Generate key
+        run: php artisan key:generate
 
       - name: Migrate Test Database
         run: php artisan migrate --env=testing --seed --force
@@ -91,13 +94,13 @@ jobs:
           DB_PORT: ${{ job.services.mysql.ports['3306'] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
 
-      - name: Change Directory Permissions
+      - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
       - name: Static Analysis via PHPStan
         run: ./vendor/bin/phpstan analyse --memory-limit=2G
 
-      - name: Execute tests (Unit and Feature tests) via Pest
+      - name: Execute tests via Pest
         run: vendor/bin/pest
         env:
           DB_PORT: ${{ job.services.mysql.ports['3306'] }}
