@@ -1,13 +1,11 @@
 # GitHub Action for Laravel with MySQL and Redis
-name: API
+name: Laravel
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  schedule:
-    - cron: "0 0 * * *"
 
 jobs:
   laravel-tests:
@@ -17,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        php: ['8.0',8.1','8.2']
+        php: ['8.1','8.2']
         laravel: ['^10.']
         dependencies: ["highest"]
 
@@ -55,12 +53,6 @@ jobs:
       - name: Verify laravel_cicd_testing DB exists
         run: mysql --host 127.0.0.1 --port 3306 -uroot -ppass -e "SHOW DATABASES LIKE 'laravel_cicd_testing'"
 
-      - name: Create 2nd Database
-        run: mysql --host 127.0.0.1 --port 3306 -uroot -ppass -e "CREATE DATABASE IF NOT EXISTS laravel_cicd_testing_second;"
-
-      - name: Verify laravel_cicd_testing DB exists
-        run: mysql --host 127.0.0.1 --port 3306 -uroot -ppass -e "SHOW DATABASES LIKE 'laravel_cicd_testing_second'"
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -90,7 +82,7 @@ jobs:
         run: ./vendor/bin/phpstan analyse --memory-limit=2G
 
       - name: Execute tests via Pest
-        run: vendor/bin/pest
+        run: ./vendor/bin/pest
         env:
           DB_PORT: ${{ job.services.mysql.ports['3306'] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
